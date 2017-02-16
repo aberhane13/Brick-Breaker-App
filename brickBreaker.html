@@ -1,0 +1,333 @@
+<html>
+<title>
+Brickbreaker!
+</title>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js">
+</script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.0-beta.2/angular-sanitize.js">
+</script>
+
+
+<style>
+html {
+	width: 100%;
+	height: 100%;
+}
+
+.ball {
+	position: absolute;
+
+    width: 25px;
+    height: 25px;
+    -webkit-border-radius: 25px;
+    -moz-border-radius: 25px;
+    border-radius: 25px;
+    background: red;
+    }
+	
+.paddle {
+	background-color: black;
+	position: absolute;
+	bottom: 50px;
+	left: 500px;
+	width: 200px;
+	height: 10px;
+}
+
+.brick {
+	background-color: black;
+	position: relative;
+	width: 100px;
+	height:10px;
+
+}
+
+.scoreboard {
+	left: 0 px;
+	height: 20px;
+	width: 200px;
+	background-color: aqua;
+}
+
+.lives{
+
+	left: 0px;
+	height: 20px;
+	width: 200px;
+	background-color: yellow;
+
+}
+
+.loseMessage{
+
+	position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+}
+
+.winMessage{
+
+	position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+}
+</style>
+</head>
+<body ng-app="myApp" ng-controller="myCtrl" ng-mousemove = "movement($event)">
+
+<!-- View for scoreboard-->
+<div id="scoreboard" class = "scoreboard">Score: {{currentScore}} </div>
+<div id="lives" class="lives">Lives Remaining: {{livesLeft}}<div>
+
+<!--View for the bricks when game is in play -->
+<div ng-show = "gameOn">
+<div ng-repeat="brick in bricks" ng-style="brick.brickStyleObj"></div>
+</div>
+
+<!--You lose message which appears when all loseFlag = true-->
+<h1 class = "loseMessage" ng-show = "loseFlag">You lose</h1>
+
+<!--You win message which appears when winFlag equals true-->
+<h1 class = "winMessage" ng-show = "winFlag">You win!</h1>
+
+<!-- View for the paddle-->
+<div  id = "paddle" class = "paddle" ng-show="gameOn"></div>
+
+<!-- View for the ball -->
+<div  id="ball" class="ball" ng-show="gameOn"></div>
+</body>
+<script>
+
+//Initialize module
+var app = angular.module("myApp", ['ngSanitize']);
+
+//Paddle variable
+var paddle = document.getElementById("paddle");
+
+//Ball variable
+var ball = document.getElementById("ball");
+
+//Implement controller
+app.controller("myCtrl", function($scope, $interval, $timeout){
+
+	//Start game
+	$scope.gameOn = true;
+	
+	//Flag for when the player loses all his/her lives
+	$scope.loseFlag = false;
+	
+	//Flag for when the player hits all of the bricks
+	$scope.winFlag = false;
+
+	//Array of bricks
+	$scope.bricks = [];
+	
+	//Current score for number of bricks hit
+	$scope.currentScore = 0;
+	
+	//Lives remaining
+	$scope.livesLeft = 5;
+	
+	//Counter used for Id's of bricks. The first brick's id equals 0.
+	var idCounter = 0;
+	
+	for(i=0; i<5; i++)
+	{
+		for(j=0; j<7; j++)
+		{
+	
+			//Create brick
+			var brick = {brickId: idCounter,
+			brickX:200*j, 
+			brickY: 600 - (40*i), 
+			brickHeight: 10, 
+			brickWidth: 125, 
+			hit: false, 
+			brickStyleObj:{}};
+	
+		//Define brick's style attributes. This is used for the ng-style directive in the View
+		brick.brickStyleObj = {"background-color": "black", 
+		"position": "absolute", 
+		"bottom": String(brick.brickY)+"px", 
+		"left": String(brick.brickX)+"px", 
+		"width": String(brick.brickWidth)+"px", 
+		"height": String(brick.brickHeight)+"px"};
+	
+		//Increment counter
+		idCounter++;
+	
+		//Push brick in array of bricks
+		$scope.bricks.push(brick);
+		}
+	}
+	
+	//Movement for paddle
+	$scope.movement = function(myE){
+	
+		$scope.paddleX = myE.x;
+		paddle.style.left = String(myE.x)+"px";
+	};
+	
+	//Ball's initial x and y coordinates
+	$scope.ballY = 400;
+	$scope.ballX = 560;
+	
+	//Paddle's x and y coordinates
+	$scope.paddleY = 50;
+	$scope.paddleX = 500;
+	
+	//Ball's rate of change within the x and y axis.
+	$scope.slopeX = 1;
+	$scope.slopeY = -1;
+	
+	
+	
+	//If game is starting
+	if($scope.gameOn == true)
+	{
+		$interval(function(){
+	
+			//Ball's movement
+			$scope.ballX -= $scope.slopeX;
+			$scope.ballY += $scope.slopeY;
+	
+			//Ball's movement in the view.
+			ball.style.bottom = String($scope.ballY)+"px";
+			ball.style.left = String($scope.ballX)+"px";
+	
+			//If bounce the ball off the left and right wall
+			if($scope.ballX >= 1325 ||
+			$scope.ballX <= 0)
+			{
+				$scope.slopeX *= -1;
+			}
+	
+			//Bounce the ball off the ceiling
+			if($scope.ballY + 25 <= 0 ||
+			$scope.ballY >= 580)
+			{
+				$scope.slopeY *= -1;
+			}
+	
+	/*========================================
+	Collision detection between ball and paddle
+	==========================================
+	*/
+	
+			//y coordinate of the ball is equal to the top of the paddle
+			if(($scope.ballY == $scope.paddleY + 10) &&
+	
+			//x coordinate of ball within x coordinate of paddle
+			($scope.ballX >= $scope.paddleX && $scope.ballX + 25 <= $scope.paddleX + 200||
+	
+			//Middle of ball hitting edge of paddle on the right side
+			( $scope.ballX + 25 >= $scope.paddleX + 200 && $scope.ballX <= $scope.paddleX + 200)||
+	
+			//Middle of ball hitting edge of paddle on the left side
+			($scope.ballX <= $scope.paddleX && $scope.ballX + 25 >= $scope.paddleX)))
+			{
+				$scope.slopeY *= -1;
+			}
+	
+			//If ball goes past the paddle
+			if($scope.ballY + 25 < $scope.paddleY)
+			{
+				//Lose a life
+				$scope.livesLeft--;
+		
+				//Reset ball's position
+				$scope.ballY = 400;
+				$scope.ballX = 560;
+		
+				//If you run out of all your lives
+				if($scope.livesLeft == 0)
+				{
+				$timeout(function(){
+		
+				$scope.gameOn = false;
+				$scope.loseFlag = true;
+				$scope.slopeX = 0;
+				$scope.slopeY = 0; }, 1);
+		
+			}
+		}
+	
+	/*========================================
+	Collision detection between ball and brick
+	==========================================
+	*/
+	
+	/*
+		Make an array of collided bricks using the specified filter.
+		There should only be at most 1 entry due to only 1 brick getting hit at a time.
+	*/
+		$scope.collision = $scope.bricks.filter(function(brick){
+	
+			return (
+	
+				//Top of ball colliding with bottom of brick going updward
+				(($scope.ballY + 25 == brick.brickY && $scope.slopeY > 0) || 
+	
+				//Bottom of ball colliding with top of brick going downward
+				($scope.ballY == brick.brickY + 10 && $scope.slopeY < 0))&&
+	
+				//Ball x coordinate within brick x coordinate
+				($scope.ballX >= brick.brickX && $scope.ballX + 25 <= brick.brickX + 125||
+	
+				//Middle of ball hitting edge of brick on the right side
+				( $scope.ballX + 25 >= brick.brickX + 125 && $scope.ballX <= brick.brickX + 125)||
+	
+				//Middle of ball hitting edge of brick on the left side
+				($scope.ballX <= brick.brickX && $scope.ballX + 25 >= brick.brickX))&&
+	
+				//Brick has not been hit before
+				brick.hit == false)
+	
+	
+		});
+	
+		//If the ball collides with a brick
+		if ($scope.collision.length > 0)
+		{
+			//Change the ball y direction
+			$scope.slopeY *= -1;
+	
+			//Indicate the brick has been hit
+			$scope.collision[0].hit = true;
+	
+			//Set the brick's color to white to indicate brick has been "erased"
+			$scope.collision[0].brickStyleObj.backgroundColor = "white";
+	
+			//Increase score
+			$scope.currentScore++;
+			
+			//If all bricks are hit, you win the game
+			if($scope.currentScore == 35 && $scope.loseFlag == false)
+			{
+	
+				$timeout(function(){
+	
+					$scope.gameOn = false;
+					$scope.winFlag = true;
+					$scope.slopeX = 0;
+					$scope.slopeY = 0;
+	
+				},1);
+			}
+	
+		}
+	}, 1);
+	
+	
+}
+	
+	
+});
+</script>
+</html>
